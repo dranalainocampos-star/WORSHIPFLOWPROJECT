@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WorshipFlow AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-wrapper">
+      <header class="app-header">
+        <div class="header-text">
+          <h1>WorshipFlow AI</h1>
+          <p>Worship setlist builder powered by AI</p>
+        </div>
+        <button class="btn btn-ghost">
+          <i class="fas fa-cog"></i> Settings
+        </button>
+      </header>
+
+      <main class="main-content">
+        <section class="card">
+          <div class="card-header">
+            <h2>My Setlists</h2>
+            <button class="btn btn-dark" id="new-setlist-btn">
+              <i class="fas fa-plus"></i> New
+            </button>
+          </div>
+
+          <div class="setlist-container" id="setlist-container"></div>
+        </section>
+
+        <section class="card active-setlist-card">
+          <div class="card-header">
+            <h2 id="active-setlist-title" class="uppercase">
+              SELECT A SETLIST
+            </h2>
+            <div class="action-buttons">
+              <button class="btn btn-outline" id="manual-song-header-btn">
+                <i class="fas fa-plus"></i> Add Song Manually
+              </button>
+              <button class="btn btn-dark" id="ai-generate-btn">
+                <i class="fas fa-sparkles"></i> AI Generate
+              </button>
+              <button class="btn btn-ghost" title="Export PDF">
+                <i class="fas fa-download"></i> PDF
+              </button>
+              <button class="btn btn-ghost" title="Export PNG">
+                <i class="fas fa-download"></i> PNG
+              </button>
+              <button class="btn btn-ghost" title="Share">
+                <i class="fas fa-share-nodes"></i> Share
+              </button>
+            </div>
+          </div>
+
+          <div class="empty-state" id="empty-state">
+            <p id="empty-state-message">No songs yet</p>
+            <button class="btn btn-dark" id="manual-song-btn">
+              <i class="fas fa-plus"></i> Add Song Manually
+            </button>
+          </div>
+
+          <div id="setlist-content" class="hidden"></div>
+        </section>
+      </main>
+    </div>
+
+    <button class="floating-help">
+      <i class="fas fa-question"></i>
+    </button>
+    <div id="ai-modal-overlay" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Generate Setlist with AI</h2>
+          <button id="close-modal-btn" class="icon-btn" title="Close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Theme</label>
+            <input
+              type="text"
+              id="ai-theme"
+              class="form-control"
+              placeholder="e.g., Praise & Worship, Easter, Christmas"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Occasion</label>
+            <input
+              type="text"
+              id="ai-occasion"
+              class="form-control"
+              placeholder="e.g., Sunday service, Youth night"
+            />
+          </div>
+
+          <div class="section-header">
+            <h3>Specific Songs (Optional)</h3>
+            <button id="add-song-input-btn" class="btn btn-outline btn-sm">
+              <i class="fas fa-plus"></i> Add Song
+            </button>
+          </div>
+          <p class="helper-text">
+            Pre-fill specific songs you want in the setlist with YouTube links
+          </p>
+
+          <div id="song-inputs-container"></div>
+
+          <div class="form-group mt-4">
+            <label>Additional Notes</label>
+            <textarea
+              id="ai-notes"
+              class="form-control"
+              placeholder="Any specific requirements or preferences..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="submit-ai-generate-btn" class="btn btn-dark btn-full">
+            <i class="fas fa-sparkles"></i> Generate Setlist
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="new-setlist-modal-overlay" class="modal-overlay hidden">
+      <div class="modal new-setlist-modal">
+        <div class="modal-header new-setlist-modal-header">
+          <h2>Create New Setlist</h2>
+          <button
+            type="button"
+            id="close-new-setlist-modal-btn"
+            class="icon-btn new-setlist-close-btn"
+            title="Close"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <form id="new-setlist-form" class="new-setlist-form">
+          <div class="modal-body new-setlist-modal-body">
+            <div class="form-group new-setlist-name-group">
+              <label for="new-setlist-name">Setlist Name</label>
+              <input
+                type="text"
+                id="new-setlist-name"
+                class="form-control new-setlist-input"
+                placeholder="Sunday Service, Easter 2026..."
+                autocomplete="off"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="modal-footer new-setlist-modal-footer">
+            <button
+              type="submit"
+              id="submit-new-setlist-btn"
+              class="btn btn-dark btn-full new-setlist-submit-btn"
+            >
+              Create Setlist
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="manual-song-modal-overlay" class="modal-overlay hidden">
+      <div class="modal manual-song-modal">
+        <div class="manual-song-toolbar">
+          <button
+            type="button"
+            id="manual-song-back-btn"
+            class="btn btn-outline manual-song-nav-btn"
+          >
+            <i class="fas fa-arrow-left"></i> Back to Setlist
+          </button>
+          <button
+            type="submit"
+            form="manual-song-form"
+            id="save-manual-song-btn"
+            class="btn btn-dark manual-song-save-btn"
+          >
+            <i class="far fa-floppy-disk"></i> Save Changes
+          </button>
+        </div>
+
+        <form id="manual-song-form" class="manual-song-form">
+          <section class="manual-song-panel">
+            <h2>Song Details</h2>
+
+            <div class="form-group">
+              <label for="manual-song-title">Title</label>
+              <input
+                type="text"
+                id="manual-song-title"
+                class="form-control manual-song-control"
+                value="New Song"
+                placeholder="New Song"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="manual-song-artist">Artist</label>
+              <input
+                type="text"
+                id="manual-song-artist"
+                class="form-control manual-song-control"
+                placeholder="Artist name"
+              />
+            </div>
+
+            <div class="manual-song-two-column">
+              <div class="form-group">
+                <label for="manual-song-original-key">Original Key</label>
+                <select
+                  id="manual-song-original-key"
+                  class="form-control manual-song-control"
+                >
+                  <option value="C">C</option>
+                  <option value="C#/Db">C#/Db</option>
+                  <option value="D">D</option>
+                  <option value="D#/Eb">D#/Eb</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="F#/Gb">F#/Gb</option>
+                  <option value="G">G</option>
+                  <option value="G#/Ab">G#/Ab</option>
+                  <option value="A">A</option>
+                  <option value="A#/Bb">A#/Bb</option>
+                  <option value="B">B</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="manual-song-transpose-key">Transpose To</label>
+                <select
+                  id="manual-song-transpose-key"
+                  class="form-control manual-song-control"
+                >
+                  <option value="C">C</option>
+                  <option value="C#/Db">C#/Db</option>
+                  <option value="D">D</option>
+                  <option value="D#/Eb">D#/Eb</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="F#/Gb">F#/Gb</option>
+                  <option value="G">G</option>
+                  <option value="G#/Ab">G#/Ab</option>
+                  <option value="A">A</option>
+                  <option value="A#/Bb">A#/Bb</option>
+                  <option value="B">B</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="manual-song-youtube-url">YouTube URL</label>
+              <input
+                type="url"
+                id="manual-song-youtube-url"
+                class="form-control manual-song-control"
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="manual-song-notes">Notes</label>
+              <textarea
+                id="manual-song-notes"
+                class="form-control manual-song-control manual-song-notes"
+                placeholder="Performance notes, cues, etc."
+              ></textarea>
+            </div>
+          </section>
+
+          <section class="manual-song-panel">
+            <div class="manual-song-section-title">
+              <h2><i class="fab fa-youtube"></i> YouTube Player</h2>
+            </div>
+            <div id="manual-youtube-preview" class="manual-youtube-preview">
+              <div class="manual-youtube-placeholder">
+                <i class="fab fa-youtube"></i>
+                <p>Add a YouTube URL to play the song</p>
+                <span
+                  >Note: Audio transposition requires Chrome Extension
+                  bridge</span
+                >
+              </div>
+            </div>
+          </section>
+
+          <section class="manual-song-panel">
+            <div class="manual-song-section-header">
+              <div>
+                <h2>Lyrics &amp; Chords</h2>
+                <p class="manual-song-helper">
+                  Use [ChordName] format for chords, e.g., [C] [Am] [F] [G].
+                  Best results: add a real song title and YouTube URL, then use
+                  Grok to draft the chart.
+                </p>
+              </div>
+              <button
+                type="button"
+                id="auto-fill-manual-song-btn"
+                class="btn btn-outline manual-song-autofill-btn"
+              >
+                <i class="fas fa-wand-magic-sparkles"></i> Auto Fill with Grok
+              </button>
+            </div>
+            <textarea
+              id="manual-song-chords"
+              class="form-control manual-song-control manual-song-lyrics"
+              placeholder="Verse 1:
+[C]Amazing [G]grace, how [Am]sweet the [F]sound
+[C]That saved a [G]wretch like [C]me
+
+Chorus:
+[F]I once was [C]lost, but [G]now am [Am]found..."
+            ></textarea>
+          </section>
+        </form>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
