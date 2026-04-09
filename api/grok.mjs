@@ -1,4 +1,4 @@
-const GROK_MODEL = 'grok-beta';
+const GROK_MODEL = process.env.XAI_MODEL || 'grok-4.20-reasoning';
 const VALID_SONG_KEYS = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B'];
 
 function json(data, init = {}) {
@@ -132,7 +132,21 @@ async function callGrok(systemPrompt, userPrompt) {
     });
 
     if (!response.ok) {
-        throw new Error(`Grok API returned status ${response.status}`);
+        const errorText = await response.text();
+        let detail = errorText;
+
+        try {
+            const parsed = JSON.parse(errorText);
+            detail =
+                parsed.error?.message ||
+                parsed.message ||
+                parsed.error ||
+                errorText;
+        } catch (error) {
+            detail = errorText;
+        }
+
+        throw new Error(`Grok API returned status ${response.status}: ${detail}`);
     }
 
     const data = await response.json();
