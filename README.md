@@ -4,15 +4,16 @@ Dark-mode worship setlist builder with:
 
 - manual song entry
 - YouTube embed preview
-- Grok-powered setlist generation
-- Grok-powered draft lyrics and chords autofill
+- Groq-powered setlist generation
+- Groq-powered draft lyrics and chords autofill
 
 ## Environment Variable
 
 Set this in Vercel:
 
 ```bash
-XAI_API_KEY=your_grok_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 Do not commit your real API key to GitHub.
@@ -46,8 +47,9 @@ If you already created the GitHub repo in the browser, use its HTTPS URL for `or
 1. Push the project to GitHub.
 2. Go to Vercel and click `Add New Project`.
 3. Import your GitHub repo.
-4. In project settings, add environment variable:
-   `XAI_API_KEY`
+4. In project settings, add environment variables:
+   `GROQ_API_KEY`
+   `GROQ_MODEL`
 5. Deploy.
 
 ### Option 2: Vercel CLI
@@ -60,7 +62,8 @@ vercel
 Then add the environment variable:
 
 ```bash
-vercel env add XAI_API_KEY
+vercel env add GROQ_API_KEY
+vercel env add GROQ_MODEL
 ```
 
 Redeploy after adding env vars:
@@ -74,10 +77,11 @@ vercel --prod
 1. Open the deployed URL.
 2. Create a setlist.
 3. Try `AI Generate`.
-4. Try `Add Song Manually` -> `Auto Fill with Grok`.
+4. Try `Add Song Manually` -> `Auto Fill with AI`.
 
-If Grok is not working, check:
+If Groq is not working, check:
 
-- `XAI_API_KEY` is set in Vercel
+- `GROQ_API_KEY` is set in Vercel
+- `GROQ_MODEL` is set in Vercel
 - the deployment was redeployed after adding the env var
-- your Grok key is valid
+- your Groq key is valid

@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasMeaningfulTitle = title && title !== 'New Song';
 
         if (!hasMeaningfulTitle && !youtubeUrl) {
-            alert('Add a song title or YouTube URL first so Grok has something to work with.');
+            alert('Add a song title or YouTube URL first so the AI has something to work with.');
             manualSongTitleInput.focus();
             return;
         }
@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitAiGenerateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
         submitAiGenerateBtn.disabled = true;
 
-        // 3. Fetch from server-side Grok proxy
+        // 3. Fetch from the server-side AI proxy
         try {
             const { songs: newSongs } = await postGrokAction('generate-setlist', {
                 theme,

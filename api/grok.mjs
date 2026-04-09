@@ -1,5 +1,39 @@
-const GROK_MODEL = process.env.XAI_MODEL || 'grok-4.20-reasoning';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 const VALID_SONG_KEYS = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B'];
+const SETLIST_RESPONSE_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+        songs: {
+            type: 'array',
+            items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    title: { type: 'string' },
+                    artist: { type: 'string' },
+                    youtubeId: { type: ['string', 'null'] },
+                    chords: { type: 'string' }
+                },
+                required: ['title', 'artist', 'youtubeId', 'chords']
+            }
+        }
+    },
+    required: ['songs']
+};
+const SONG_DRAFT_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+        title: { type: 'string' },
+        artist: { type: 'string' },
+        originalKey: { type: 'string' },
+        transposeTo: { type: 'string' },
+        notes: { type: 'string' },
+        chords: { type: 'string' }
+    },
+    required: ['title', 'artist', 'originalKey', 'transposeTo', 'notes', 'chords']
+};
 
 function json(data, init = {}) {
     return new Response(JSON.stringify(data), {
@@ -34,19 +68,19 @@ function buildSetlistPrompts(payload = {}) {
     const specificSongs = Array.isArray(payload.specificSongs) ? payload.specificSongs : [];
 
     const systemPrompt = `You are WorshipFlow AI, a precise JSON generator for worship setlists.
-You MUST respond ONLY with a raw JSON array. Do NOT wrap the response in markdown blocks (e.g., \`\`\`json).
+You MUST respond ONLY with a raw JSON object that matches the required schema. Do NOT wrap the response in markdown blocks (e.g., \`\`\`json).
 Do not include any introductory or concluding text.
 
-Generate a setlist based on the user's prompt. Each object in the array must strictly match this structure:
-[
-    {
-        "title": "Song Title",
-        "artist": "Artist Name",
-        "youtubeId": "11_char_video_id",
-        "chords": "Verse 1\\n[G]         [C]\\nLyrics go here..."
-    }
-]
-Ensure 'youtubeId' is an accurate, real 11-character YouTube video ID for the song. 'chords' should be standard chord chart format utilizing line breaks.`;
+Generate a setlist based on the user's prompt.
+Return an object with a single "songs" array.
+Each song object must include:
+- title
+- artist
+- youtubeId
+- chords
+
+If you are not confident about a YouTube video ID, use null.
+'chords' should be standard chord chart format utilizing line breaks.`;
 
     let userPrompt = 'Create a worship setlist. ';
     if (theme) userPrompt += `Theme: ${theme}. `;
@@ -72,7 +106,7 @@ function buildSongDraftPrompts(payload = {}) {
     const transposeTo = normalizeSongKey(payload.transposeTo || payload.originalKey);
 
     const systemPrompt = `You are WorshipFlow AI, a precise JSON generator for manual worship song entry.
-You MUST respond ONLY with a raw JSON object. Do NOT wrap the response in markdown blocks (e.g., \`\`\`json).
+You MUST respond ONLY with a raw JSON object that matches the required schema. Do NOT wrap the response in markdown blocks (e.g., \`\`\`json).
 Do not include any introductory or concluding text.
 
 Return exactly this structure:
@@ -108,26 +142,34 @@ Priorities:
     return { systemPrompt, userPrompt };
 }
 
-async function callGrok(systemPrompt, userPrompt) {
-    const apiKey = process.env.XAI_API_KEY;
+async function callGroq(systemPrompt, userPrompt, schemaName, schema) {
+    const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
-        throw new Error('XAI_API_KEY is not configured on the server.');
+        throw new Error('GROQ_API_KEY is not configured on the server.');
     }
 
-    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            model: GROK_MODEL,
+            model: GROQ_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ],
-            temperature: 0.2
+            temperature: 0.2,
+            response_format: {
+                type: 'json_schema',
+                json_schema: {
+                    name: schemaName,
+                    strict: true,
+                    schema
+                }
+            }
         })
     });
 
@@ -146,7 +188,7 @@ async function callGrok(systemPrompt, userPrompt) {
             detail = errorText;
         }
 
-        throw new Error(`Grok API returned status ${response.status}: ${detail}`);
+        throw new Error(`Groq API returned status ${response.status}: ${detail}`);
     }
 
     const data = await response.json();
@@ -165,10 +207,16 @@ export async function POST(request) {
 
         if (action === 'generate-setlist') {
             const { systemPrompt, userPrompt } = buildSetlistPrompts(payload);
-            const songs = await callGrok(systemPrompt, userPrompt);
+            const result = await callGroq(
+                systemPrompt,
+                userPrompt,
+                'worship_setlist_response',
+                SETLIST_RESPONSE_SCHEMA
+            );
+            const songs = result?.songs;
 
             if (!Array.isArray(songs)) {
-                return json({ error: 'Grok returned an invalid setlist format.' }, { status: 502 });
+                return json({ error: 'Groq returned an invalid setlist format.' }, { status: 502 });
             }
 
             return json({ songs });
@@ -176,10 +224,15 @@ export async function POST(request) {
 
         if (action === 'draft-song') {
             const { systemPrompt, userPrompt } = buildSongDraftPrompts(payload);
-            const draft = await callGrok(systemPrompt, userPrompt);
+            const draft = await callGroq(
+                systemPrompt,
+                userPrompt,
+                'worship_song_draft_response',
+                SONG_DRAFT_SCHEMA
+            );
 
             if (!draft || Array.isArray(draft) || typeof draft !== 'object') {
-                return json({ error: 'Grok returned an invalid song draft format.' }, { status: 502 });
+                return json({ error: 'Groq returned an invalid song draft format.' }, { status: 502 });
             }
 
             return json({ draft });
